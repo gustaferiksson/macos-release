@@ -44,6 +44,9 @@ escalate its own permissions.
 | `runner` | Runner image label, e.g. `macos-26`. |
 | `build` | Shell script producing `app`. `$VERSION`, `$BUILD` and `$SIGN_ID` are set. |
 | `signed_by_build` | Set when `build` already signs the app, to skip the codesign step. |
+| `cache_paths` | Optional. Paths restored with `actions/cache/restore` before `build`, e.g. Xcode's compilation cache. Empty skips it. |
+| `cache_key` | The exact key to restore. A cache saved on a tag is visible only to that tag, so save it from the default branch. |
+| `cache_restore_keys` | Optional fallback key prefixes. |
 
 ## Secrets
 
