@@ -68,6 +68,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0   # the tag-on-main guard needs history
+          persist-credentials: false
 
       - name: Preflight — every release secret is set
         env:
@@ -166,10 +167,11 @@ jobs:
         id: pkg
         env:
           APP: ${{ inputs.app }}
+          NAME: ${{ inputs.name }}
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
           set -euo pipefail
-          ZIP="${{ inputs.name }}-$VERSION.zip"
+          ZIP="$NAME-$VERSION.zip"
           /usr/bin/ditto -c -k --keepParent "$APP" "$ZIP"
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
           echo "sha256=$(shasum -a 256 "$ZIP" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
@@ -190,10 +192,13 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          ZIP: ${{ steps.pkg.outputs.zip }}
+          NAME: ${{ inputs.name }}
+          VERSION: ${{ steps.ver.outputs.version }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            "${{ steps.pkg.outputs.zip }}" \
-            --title "${{ inputs.name }} ${{ steps.ver.outputs.version }}" \
+            "$ZIP" \
+            --title "$NAME $VERSION" \
             --generate-notes
 
       - name: Bump Homebrew cask
