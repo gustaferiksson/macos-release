@@ -209,13 +209,27 @@ jobs:
           SHA256: ${{ steps.pkg.outputs.sha256 }}
         run: |
           set -euo pipefail
-          git clone "https://x-access-token:${TAP_TOKEN}@github.com/gustaferiksson/homebrew-tap.git" tap
-          cd tap
-          sed -i '' -E "s/^  version \".*\"/  version \"$VERSION\"/" "Casks/$CASK.rb"
-          sed -i '' -E "s/^  sha256 \".*\"/  sha256 \"$SHA256\"/" "Casks/$CASK.rb"
-          grep -q "^  version \"$VERSION\"$" "Casks/$CASK.rb"
-          grep -q "^  sha256 \"$SHA256\"$" "Casks/$CASK.rb"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "$CASK $VERSION"
-          git push
+          # GitHub occasionally rejects a push with a transient server error, so retry from a fresh clone.
+          for attempt in 1 2 3 4 5; do
+            rm -rf tap
+            git clone "https://x-access-token:${TAP_TOKEN}@github.com/gustaferiksson/homebrew-tap.git" tap
+            cd tap
+            sed -i '' -E "s/^  version \".*\"/  version \"$VERSION\"/" "Casks/$CASK.rb"
+            sed -i '' -E "s/^  sha256 \".*\"/  sha256 \"$SHA256\"/" "Casks/$CASK.rb"
+            grep -q "^  version \"$VERSION\"$" "Casks/$CASK.rb"
+            grep -q "^  sha256 \"$SHA256\"$" "Casks/$CASK.rb"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am "$CASK $VERSION"
+            if git push; then
+              exit 0
+            fi
+            cd ..
+            if [ "$attempt" -eq 5 ]; then
+              echo "::error::pushing the cask bump failed $attempt times"
+              exit 1
+            fi
+            delay=$((5 * 2 ** attempt))
+            echo "push attempt $attempt failed, retrying in ${delay}s"
+            sleep "$delay"
+          done
